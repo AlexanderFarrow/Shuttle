@@ -18,6 +18,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import kotlin.Unit;
+import kotlin.jvm.functions.Function0;
 
 public class QueueManager {
 
@@ -97,7 +99,7 @@ public class QueueManager {
         saveQueue(false);
     }
 
-    public void open(List<Song> songs, final int position, UnsafeAction openCurrentAndNext) {
+    public void load(@NonNull List<Song> songs, final int position, @NonNull UnsafeAction openCurrentAndNext) {
 
         List<QueueItem> queueItems = QueueItemKt.toQueueItems(songs);
 
@@ -369,7 +371,7 @@ public class QueueManager {
         PlaybackSettingsManager.INSTANCE.setShuffleMode(shuffleMode);
     }
 
-    Disposable reloadQueue(UnsafeAction reloadComplete, UnsafeAction open, UnsafeConsumer<Long> seekTo) {
+    Disposable reloadQueue(@NonNull Function0<Unit> onComplete) {
         queueReloading = true;
 
         shuffleMode = PlaybackSettingsManager.INSTANCE.getShuffleMode();
@@ -388,7 +390,7 @@ public class QueueManager {
                         if (queuePosition < 0 || queuePosition >= playlist.size()) {
                             // The saved playlist is bogus, discard it
                             playlist.clear();
-                            onQueueReloadComplete(reloadComplete);
+                            onComplete.invoke();
                             return;
                         }
 
@@ -408,7 +410,7 @@ public class QueueManager {
                                 if (queuePosition >= shuffleList.size()) {
                                     // The saved playlist is bogus, discard it
                                     shuffleList.clear();
-                                    onQueueReloadComplete(reloadComplete);
+                                    onComplete.invoke();
                                     return;
                                 }
                             }
@@ -417,15 +419,12 @@ public class QueueManager {
                         if (QueueManager.this.queuePosition < 0 || QueueManager.this.queuePosition >= getCurrentPlaylist().size()) {
                             QueueManager.this.queuePosition = 0;
                         }
-
-                        open.run();
-
-                        final long seekPos = PlaybackSettingsManager.INSTANCE.getSeekPosition();
-                        seekTo.accept(seekPos > 0 ? seekPos : 0);
                     }
-
-                    onQueueReloadComplete(reloadComplete);
-                }, error -> LogUtils.logException(TAG, "Reloading queue", error));
+                    onComplete.invoke();
+                }, error -> {
+                    onComplete.invoke();
+                    LogUtils.logException(TAG, "Reloading queue", error);
+                });
     }
 
     private void onQueueReloadComplete(UnsafeAction completion) {

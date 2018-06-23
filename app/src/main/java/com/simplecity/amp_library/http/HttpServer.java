@@ -48,6 +48,10 @@ public class HttpServer {
         }
     }
 
+    public void clearImage() {
+        imageBytesToServe = null;
+    }
+
     public void start() {
         if (!isStarted) {
             try {
@@ -136,6 +140,9 @@ public class HttpServer {
                     e.printStackTrace();
                 }
             } else if (uri.contains("image")) {
+                if (imageBytesToServe == null) {
+                    return newFixedLengthResponse(Response.Status.NOT_FOUND, "text/html", "Image bytes null");
+                }
                 cleanupImageStream();
                 imageInputStream = new ByteArrayInputStream(imageBytesToServe);
                 return newFixedLengthResponse(Response.Status.OK, "image/png", imageInputStream, imageBytesToServe.length);

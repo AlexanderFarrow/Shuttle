@@ -14,6 +14,8 @@ import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
@@ -35,6 +37,7 @@ import com.bumptech.glide.request.animation.GlideAnimation;
 import com.bumptech.glide.request.target.SimpleTarget;
 import com.bumptech.glide.request.target.Target;
 import com.f2prateek.rx.preferences2.RxSharedPreferences;
+import com.google.android.gms.cast.framework.CastButtonFactory;
 import com.jakewharton.rxbinding2.widget.RxSeekBar;
 import com.jakewharton.rxbinding2.widget.SeekBarChangeEvent;
 import com.jakewharton.rxbinding2.widget.SeekBarProgressChangeEvent;
@@ -81,6 +84,7 @@ import io.reactivex.schedulers.Schedulers;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
+import kotlin.Unit;
 
 public class PlayerFragment extends BaseFragment implements
         PlayerView,
@@ -203,7 +207,9 @@ public class PlayerFragment extends BaseFragment implements
 
         toolbar.setNavigationOnClickListener(v -> getActivity().onBackPressed());
         toolbar.inflateMenu(R.menu.menu_now_playing);
-        setupCastMenu(toolbar.getMenu());
+
+        MenuItem menuItem = CastButtonFactory.setUpMediaRouteButton(getContext(), toolbar.getMenu(), R.id.media_route_menu_item);
+        menuItem.setVisible(true);
 
         MenuItem favoriteMenuItem = toolbar.getMenu().findItem(R.id.favorite);
         FavoriteActionBarView menuActionView = (FavoriteActionBarView) favoriteMenuItem.getActionView();
@@ -211,10 +217,10 @@ public class PlayerFragment extends BaseFragment implements
         toolbar.setOnMenuItemClickListener(this);
 
         if (playPauseView != null) {
-            playPauseView.setOnClickListener(v -> {
-                playPauseView.toggle();
-                playPauseView.postDelayed(() -> presenter.togglePlayback(), 200);
-            });
+            playPauseView.setOnClickListener(v -> playPauseView.toggle(() -> {
+                presenter.togglePlayback();
+                return Unit.INSTANCE;
+            }));
         }
 
         if (repeatButton != null) {
@@ -233,7 +239,7 @@ public class PlayerFragment extends BaseFragment implements
         }
 
         if (prevButton != null) {
-            prevButton.setOnClickListener(v -> presenter.prev(true));
+            prevButton.setOnClickListener(v -> presenter.prev(false));
             prevButton.setRepeatListener((v, duration, repeatCount) -> presenter.scanBackward(repeatCount, duration));
         }
 
@@ -316,6 +322,7 @@ public class PlayerFragment extends BaseFragment implements
                     .ofType(SeekBarProgressChangeEvent.class)
                     .filter(SeekBarProgressChangeEvent::fromUser)
                     .debounce(15, TimeUnit.MILLISECONDS)
+                    .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(
                             seekBarChangeEvent -> presenter.seekTo(seekBarChangeEvent.progress()),
                             error -> LogUtils.logException(TAG, "Error receiving seekbar progress", error))
@@ -399,12 +406,12 @@ public class PlayerFragment extends BaseFragment implements
         if (playPauseView != null) {
             if (isPlaying) {
                 if (playPauseView.isPlay()) {
-                    playPauseView.toggle();
+                    playPauseView.toggle(null);
                     playPauseView.setContentDescription(getString(R.string.btn_pause));
                 }
             } else {
                 if (!playPauseView.isPlay()) {
-                    playPauseView.toggle();
+                    playPauseView.toggle(null);
                     playPauseView.setContentDescription(getString(R.string.btn_play));
                 }
             }
